@@ -1,53 +1,33 @@
-import requests
-from bs4 import BeautifulSoup
+from utils.fetch import fetch_webpage
+from utils.extract import extract_ship_data
+from utils.save import save_to_csv, save_to_html
 import pandas as pd
 
-# Create output directory if not exists
-url = 'https://sdci.kh.twport.com.tw/khbweb/UA1007.aspx'
-response = requests.get(url, headers={'User-Agent': 'Mozilla/5.0'})
+def main(url: str, output_csv_path: str, output_html_path: str, ship_content_id_prefix: str, cols: list[str]) -> None:
+    # Fetch the webpage
+    html = fetch_webpage(url)
+    save_to_html(html, output_html_path)
 
-# Check if the request is successful
-if response.status_code == 200:
+    # Extract the ship data
+    result_df = pd.DataFrame(columns=cols)
+    ship_id = 0
+    while True:
+        ids = [f"{ship_content_id_prefix}{ship_id}_{num}" for num in range(0, 14)]
 
-    # Save the webpage to output directory
-    with open('output/output.html', 'w', encoding='utf-8') as file:
-        file.write(response.text)
+        # Check if the ship content exists
+        result, df = extract_ship_data(html, ids, cols)
+        if result == False:
+            break
 
-    # Parse the webpage
-    soup = BeautifulSoup(response.text, 'html.parser')
+        # Append the ship data to the dataframe
+        result_df = pd.concat([result_df, df], ignore_index=True)
 
-    # Define the ids and columns
-    ids = [f"ASPx_船舶即時動態_tccell0_{num}" for num in range(0, 14)]
-    cols = ["船編航次", "船名", "最新事件", "進港申請", "移泊申請", "出港申請", "港外船舶進港", "錨泊中", "進港作業中", "裝卸須知", "移泊作業中", "移泊裝卸作業", "出港作業中", "船舶已出港"]
-    
-    # Extract the data
-    data = []
-    for id in ids:
-        # Find the content by id
-        content = soup.find(id=id)
-        if content:
-            # Clean the content
-            cleaned_content = content.get_text(strip=True)
+        # Move to the next ship
+        ship_id += 1
 
-            # Check if the content contains image
-            img = content.find('img')
-            if img and 'src' in img.attrs:
-                img_src = img['src']
-                if 'ok.png' in img_src:
-                    cleaned_content += 'YES'
-                elif 'red.gif' in img_src:
-                    cleaned_content += 'RED'
+    # Save the ship data to csv
+    save_to_csv(result_df, output_csv_path)
 
-            # Check if the content is empty
-            if cleaned_content == '':
-                cleaned_content = 'NO'
-            
-            data.append(cleaned_content)
-        else:
-            data.append("NO")
-
-    df = pd.DataFrame([data], columns=cols)
-    
-    df.to_csv('output/output.csv', index=False)
-else:
-    print(f"Failed to retrieve the webpage. Status code: {response.status_code}")
+if __name__ == '__main__':
+    from config import url, output_html_path, output_csv_path, ship_content_id_prefix, cols
+    main(url, output_csv_path, output_html_path, ship_content_id_prefix, cols)
