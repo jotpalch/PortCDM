@@ -1,7 +1,10 @@
+import os
+import time
 from utils.fetch import fetch_webpage
 from utils.extract import extract_ship_data
-from utils.save import save_to_csv, save_to_html
+from utils.save import save_to_csv, save_to_html, save_to_db
 import pandas as pd
+from datetime import datetime
 
 def main(url: str, output_csv_path: str, output_html_path: str, ship_content_id_prefix: str, cols: list[str]) -> None:
     # Fetch the webpage
@@ -28,6 +31,19 @@ def main(url: str, output_csv_path: str, output_html_path: str, ship_content_id_
     # Save the ship data to csv
     save_to_csv(result_df, output_csv_path)
 
+    # Store the ship data in the database
+    save_to_db(result_df)
+
 if __name__ == '__main__':
     from config import url, output_html_path, output_csv_path, ship_content_id_prefix, cols
-    main(url, output_csv_path, output_html_path, ship_content_id_prefix, cols)
+
+    interval_time = int(os.getenv('INTERVAL_TIME', 300))
+
+    time.sleep(20)
+
+    while True:
+        print(f'{datetime.now().strftime("%Y-%m-%d %H:%M:%S")} 爬取網站資料')
+
+        main(url, output_csv_path, output_html_path, ship_content_id_prefix, cols)
+
+        time.sleep(interval_time)
