@@ -1,0 +1,43 @@
+services:
+  db:
+    image: postgres:13
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./init_db.sql:/docker-entrypoint-initdb.d/init_db.sql
+    ports:
+      - "5432:5432"
+
+  crawler:
+    build: ./crawler
+    image: ghcr.io/jotpalch/portcdm-crawler
+    depends_on:
+      - db
+    environment:
+      PYTHONUNBUFFERED: 1
+      INTERVAL_TIME: ${INTERVAL_TIME}
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    volumes:
+      - ./output:/app/output
+
+  notifier:
+    build: ./notifier
+    image: ghcr.io/jotpalch/portcdm-notifier
+    depends_on:
+      - db
+      - crawler
+    environment:
+      PYTHONUNBUFFERED: 1
+      LINE_NOTIFY_TOKEN: ${LINE_NOTIFY_TOKEN}
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    
+volumes:
+  postgres_data:
+    name: postgres_db
