@@ -15,8 +15,8 @@ jobs:
 
     steps:
     - uses: actions/checkout@v4
+      # for the private repo comment out if the repo is public
       with:
-          repository: 'jotpalch/PortCDM'
           token: ${{ secrets.GH_PAT }}
     
     - name: Set up Docker Buildx
@@ -35,7 +35,7 @@ jobs:
         context: ./crawler
         file: ./crawler/Dockerfile
         push: true
-        tags: ghcr.io/jotpalch/portcdm-crawler:${{ github.run_number }}, ghcr.io/jotpalch/portcdm-crawler:latest
+        tags: ghcr.io/${{ github.actor }}/portcdm-crawler:${{ github.run_number }}, ghcr.io/${{ github.actor }}/portcdm-crawler:latest
 
     - name: Build and push Docker image - Notifier
       uses: docker/build-push-action@v2
@@ -43,4 +43,4 @@ jobs:
         context: ./notifier
         file: ./notifier/Dockerfile
         push: true
-        tags: ghcr.io/jotpalch/portcdm-notifier:${{ github.run_number }}, ghcr.io/jotpalch/portcdm-notifier:latest
+        tags: ghcr.io/${{ github.actor }}/portcdm-notifier:${{ github.run_number }}, ghcr.io/${{ github.actor }}/portcdm-notifier:latest
