@@ -16,6 +16,7 @@ services:
     image: ghcr.io/jotpalch/portcdm-crawler
     depends_on:
       - db
+    restart: always
     environment:
       PYTHONUNBUFFERED: 1
       INTERVAL_TIME: ${INTERVAL_TIME}
@@ -31,6 +32,7 @@ services:
     depends_on:
       - db
       - crawler
+    restart: always
     environment:
       PYTHONUNBUFFERED: 1
       LINE_NOTIFY_TOKEN: ${LINE_NOTIFY_TOKEN}
