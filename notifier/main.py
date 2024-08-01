@@ -84,7 +84,7 @@ def main():
     # 從環境變數獲取 Line Notify 權杖
     line_notify_token = os.getenv('LINE_NOTIFY_TOKEN')
 
-    interval_time = 60
+    interval_time = os.getenv('INTERVAL_TIME', 180)
 
     while True:
         print(f'{datetime.now().strftime("%Y-%m-%d %H:%M:%S")} 查看資料庫有無更新')
