@@ -1,9 +1,14 @@
-import requests
 import time
+
+import requests
+import pandas as pd
+from bs4 import BeautifulSoup
 from selenium import webdriver
 from selenium.webdriver.common.keys import Keys
 from selenium.webdriver.common.by import By
-import pandas as pd
+from selenium.webdriver.chrome.service import Service
+from selenium.webdriver.chrome.options import Options
+
 def fetch_webpage(url: str) -> str:
     """
     Fetches the content of a webpage.
@@ -16,59 +21,42 @@ def fetch_webpage(url: str) -> str:
     """
 
     response = requests.get(url, headers={'User-Agent': 'Mozilla/5.0'})
-    driver = webdriver.Chrome()
+
+    # Set up the Chrome WebDriver to run in headless mode (in docker container)
+    chrome_options = Options()
+    chrome_options.add_argument("--headless")
+    chrome_options.add_argument("--disable-gpu")
+    chrome_options.add_argument("--no-sandbox")
+    chrome_options.add_argument("--disable-dev-shm-usage")
+    chrome_options.add_argument("--window-size=1920x1080")
+
+    # Use the ChromeDriverManager to automatically download the correct version of the ChromeDriver
+    service = Service('/usr/bin/chromedriver')
+    driver = webdriver.Chrome(service=service, options=chrome_options)
+    driver.get(url)
     
-    driver.get(url)#put here the adress of your page
-    #elem = driver.find_elements_by_xpath("//*[@type='submit']")#put here the content you have put in Notepad, ie the XPath
-    vessel = pd.DataFrame({"船編航次":[], "船名":[], "最新事件":[], "進港申請":[], "移泊申請":[], "出港申請":[], "港外船舶進港":[], "錨泊中":[], "進港作業中":[], "裝卸須知":[], "移泊作業中":[], "移泊裝卸作業":[], "出港作業中":[], "船舶已出港":[]})
-    print(f"{vessel}")
-    button = driver.find_element(By.ID, 'ASPx_船舶即時動態_DXPagerBottom_PBN') #Or find button by ID.
-    check = True
+    # Will concat all the pages
+    html = driver.page_source
+
+    button = driver.find_element(By.ID, 'ASPx_船舶即時動態_DXPagerBottom_PBN')
     i = 0
-    while check:
-        list = []
-        for j in range(0,14):
-            try:   
-                td = driver.find_element(By.ID, 'ASPx_船舶即時動態_tccell'+str(i)+'_'+str(j))
-            except:
-                check = False
-                break
-        # print(f"{td.text}")
-            if j > 2:
-                try:
-                    text = td.find_element(By.XPATH, './/a//*').get_attribute("src")
-                    if text == "https://sdci.kh.twport.com.tw/khbweb/images/ok.png":
-                        list.append("true")
-                    elif text == "https://sdci.kh.twport.com.tw/khbweb/images/red.gif":
-                        list.append("RED")
-                    else:
-                        list.append("false")
-                    continue
-                    #print(f"{text}")
-                except:
-                    list.append("false")
-                    #print(f"no")
-                    continue
-            text = td.text.replace("\n", " ")
-            list.append(text)
-        if not check:
-            break
-        listtodf=pd.DataFrame({"船編航次":[list[0]], "船名":[list[1]], "最新事件":[list[2]], "進港申請":[list[3]], "移泊申請":[list[4]], "出港申請":[list[5]], "港外船舶進港":[list[6]], "錨泊中":[list[7]], "進港作業中":[list[8]], "裝卸須知":[list[9]], "移泊作業中":[list[10]], "移泊裝卸作業":[list[11]], "出港作業中":[list[12]], "船舶已出港":[list[13]]})
-        
-        vessel = pd.concat([vessel, listtodf], ignore_index=True)
-        print(f"{vessel}")
+    while True:
         if i%20 == 19:
             button.click()
             time.sleep(5)
+
+            html += driver.page_source
+
             button = driver.find_element(By.ID, 'ASPx_船舶即時動態_DXPagerBottom_PBN')
+
+            if button.get_attribute('onclick') == None:
+                break
+
         i = i+1
-    vessel.to_csv('out.csv', index=False, encoding='utf_8_sig')
-    time.sleep(5)
+
     driver.close()
     if response.status_code == 200:
-        return response.text
+        return html
     else:
         print(f"Failed to retrieve the webpage. Status code: {response.status_code}")
         return None
-    
-    
