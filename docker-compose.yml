@@ -11,11 +11,27 @@ services:
     ports:
       - "5432:5432"
 
+  notifier:
+    build: ./notifier
+    image: ghcr.io/jotpalch/portcdm-notifier
+    depends_on:
+      - db
+    restart: always
+    environment:
+      PYTHONUNBUFFERED: 1
+      LINE_NOTIFY_TOKEN: ${LINE_NOTIFY_TOKEN}
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    volumes:
+      - /wait-fot-it.sh:/app/wait-fot-it.sh
+    command: ["./wait-for-it.sh", "db:5432", "--", "python", "main.py"]
+
   crawler:
     build: ./crawler
     image: ghcr.io/jotpalch/portcdm-crawler
     depends_on:
-      - db
+      - notifier
     restart: always
     environment:
       PYTHONUNBUFFERED: 1
@@ -25,20 +41,6 @@ services:
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
     volumes:
       - ./output:/app/output
-
-  notifier:
-    build: ./notifier
-    image: ghcr.io/jotpalch/portcdm-notifier
-    depends_on:
-      - db
-      - crawler
-    restart: always
-    environment:
-      PYTHONUNBUFFERED: 1
-      LINE_NOTIFY_TOKEN: ${LINE_NOTIFY_TOKEN}
-      POSTGRES_DB: ${POSTGRES_DB}
-      POSTGRES_USER: ${POSTGRES_USER}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
     
 volumes:
   postgres_data:
