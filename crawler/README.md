@@ -10,5 +10,5 @@ Step2: Use the extracted voyage id to get the newest event which can be queried 
 
 ```bash
 docker build --platform linux/amd64 -t crawler .
-docker run --platform linux/amd64 --rm -v ./output:/app/output crawler:latest
+docker run --platform linux/amd64 --rm -v ${PWD}/output:/app/output crawler:latest
 ```
