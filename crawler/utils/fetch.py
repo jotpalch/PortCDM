@@ -1,4 +1,13 @@
+import time
+
 import requests
+import pandas as pd
+from bs4 import BeautifulSoup
+from selenium import webdriver
+from selenium.webdriver.common.keys import Keys
+from selenium.webdriver.common.by import By
+from selenium.webdriver.chrome.service import Service
+from selenium.webdriver.chrome.options import Options
 
 def fetch_webpage(url: str) -> str:
     """
@@ -12,8 +21,42 @@ def fetch_webpage(url: str) -> str:
     """
 
     response = requests.get(url, headers={'User-Agent': 'Mozilla/5.0'})
+
+    # Set up the Chrome WebDriver to run in headless mode (in docker container)
+    chrome_options = Options()
+    chrome_options.add_argument("--headless")
+    chrome_options.add_argument("--disable-gpu")
+    chrome_options.add_argument("--no-sandbox")
+    chrome_options.add_argument("--disable-dev-shm-usage")
+    chrome_options.add_argument("--window-size=1920x1080")
+
+    # Use the ChromeDriverManager to automatically download the correct version of the ChromeDriver
+    service = Service('/usr/bin/chromedriver')
+    driver = webdriver.Chrome(service=service, options=chrome_options)
+    driver.get(url)
+    
+    # Will concat all the pages
+    html = driver.page_source
+
+    button = driver.find_element(By.ID, 'ASPx_船舶即時動態_DXPagerBottom_PBN')
+    i = 0
+    while True:
+        if i%20 == 19:
+            button.click()
+            time.sleep(5)
+
+            html += driver.page_source
+
+            button = driver.find_element(By.ID, 'ASPx_船舶即時動態_DXPagerBottom_PBN')
+
+            if button.get_attribute('onclick') == None:
+                break
+
+        i = i+1
+
+    driver.close()
     if response.status_code == 200:
-        return response.text
+        return html
     else:
         print(f"Failed to retrieve the webpage. Status code: {response.status_code}")
         return None
