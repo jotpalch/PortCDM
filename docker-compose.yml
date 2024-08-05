@@ -23,8 +23,6 @@ services:
       POSTGRES_DB: ${POSTGRES_DB}
       POSTGRES_USER: ${POSTGRES_USER}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
-    volumes:
-      - /wait-fot-it.sh:/app/wait-fot-it.sh
     command: ["./wait-for-it.sh", "db:5432", "--", "python", "main.py"]
 
   crawler:
