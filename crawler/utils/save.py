@@ -124,8 +124,8 @@ def save_ship_berth_order_to_db(df: pd.DataFrame) -> None:
                 EXCLUDED.port_agent != ship_berth_order.port_agent
             )
         ''', (
-            row['泊位'], row['靠泊時間'], row['狀態'], row['引水時間'],
-            row['船名(中文)'], row['船名(英文)'], row['港口代理']
+            row['船席'], row['靠泊時間'], row['動態'], row['引水時間'],
+            row['中文船名'], row['英文船名'], row['港代理']
         ))
     
     conn.commit()
