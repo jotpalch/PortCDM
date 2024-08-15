@@ -1,3 +1,17 @@
+-- Create ship_berth_order table
+CREATE TABLE IF NOT EXISTS ship_berth_order (
+    berth_number VARCHAR(10),
+    berthing_time TIMESTAMP,
+    status VARCHAR(10),
+    pilotage_time TIMESTAMP,
+    ship_name_chinese VARCHAR(50),
+    ship_name_english VARCHAR(50),
+    port_agent VARCHAR(50),
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Create ship_status table
 CREATE TABLE IF NOT EXISTS ship_status (
     ship_voyage_number VARCHAR(10) PRIMARY KEY,
     ship_name VARCHAR(100),
@@ -26,8 +40,14 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
--- Create the trigger
-CREATE TRIGGER update_timestamp_trigger
+-- Create the trigger for ship_status table
+CREATE TRIGGER update_ship_status_timestamp
 BEFORE UPDATE ON ship_status
+FOR EACH ROW
+EXECUTE FUNCTION update_timestamp();
+
+-- Create the trigger for ship_berth_order table
+CREATE TRIGGER update_ship_berth_order_timestamp
+BEFORE UPDATE ON ship_berth_order
 FOR EACH ROW
 EXECUTE FUNCTION update_timestamp();
