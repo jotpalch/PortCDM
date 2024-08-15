@@ -14,14 +14,20 @@ The project is composed of three main services:
 
 1. Ensure you have Docker and Docker Compose installed on your system.
 
-2. Create a `.env` file in the project root directory with the following variables:
+2. Create a `.env` file in the project root directory based on the `.env_example` file. The variables include:
    ```
    INTERVAL_TIME=<crawler_interval_time>
    POSTGRES_DB=shipdb
    POSTGRES_USER=portcdm
    POSTGRES_PASSWORD=password
    LINE_NOTIFY_TOKEN=<your_line_notify_token>
+   LINE_NOTIFY_TOKEN_Pilot=<your_line_notify_token>
+   LINE_NOTIFY_TOKEN_Unmooring=<your_line_notify_token>
+   LINE_NOTIFY_TOKEN_Tugboat=<your_line_notify_token>
+   LINE_NOTIFY_TOKEN_ShippingAgent=<your_line_notify_token>
+   LINE_NOTIFY_TOKEN_LoadingUnloading=<your_line_notify_token>
    ```
+   Adjust these values according to your specific requirements.
 
 3. Ensure you have an `init_db.sql` file in the project root directory to initialize the database.
 
