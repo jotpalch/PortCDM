@@ -34,11 +34,22 @@ The project is composed of three main services:
 - Data is persisted using a named volume: postgres_db
 - Initialized with `init_db.sql` script
 
+### Notifier
+
+- Built from `./notifier` directory
+- Image: ghcr.io/jotpalch/portcdm-notifier
+- Depends on both database services
+- Restarts automatically
+- Environment variables:
+  - PYTHONUNBUFFERED: 1
+  - LINE_NOTIFY_TOKEN: Set in .env file
+  - Database credentials from .env file
+
 ### Crawler
 
 - Built from `./crawler` directory
 - Image: ghcr.io/jotpalch/portcdm-crawler
-- Depends on the database service
+- Depends on the notifier service
 - Restarts automatically
 - Environment variables:
   - PYTHONUNBUFFERED: 1
@@ -46,16 +57,6 @@ The project is composed of three main services:
   - Database credentials from .env file
 - Mounts `./output` directory to `/app/output` in the container
 
-### Notifier
-
-- Built from `./notifier` directory
-- Image: ghcr.io/jotpalch/portcdm-notifier
-- Depends on both database and crawler services
-- Restarts automatically
-- Environment variables:
-  - PYTHONUNBUFFERED: 1
-  - LINE_NOTIFY_TOKEN: Set in .env file
-  - Database credentials from .env file
 
 ## Usage
 
