@@ -1,9 +1,9 @@
 -- Create ship_berth_order table
 CREATE TABLE IF NOT EXISTS ship_berth_order (
     berth_number VARCHAR(10),
-    berthing_time TIMESTAMP,
+    berthing_time VARCHAR(20),
     status VARCHAR(10),
-    pilotage_time TIMESTAMP,
+    pilotage_time VARCHAR(20),
     ship_name_chinese VARCHAR(50),
     ship_name_english VARCHAR(50),
     port_agent VARCHAR(50),
