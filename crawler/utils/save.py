@@ -27,7 +27,15 @@ def save_to_html(html: str, output_path: str) -> None:
     with open(output_path, 'w', encoding='utf-8') as file:
         file.write(html)
 
-def save_to_db(df: pd.DataFrame) -> None:
+def save_to_db(df: pd.DataFrame, table_name: str) -> None:
+    if table_name == 'ship_status':
+        save_ship_status_to_db(df)
+    elif table_name == 'ship_berth_order':
+        save_ship_berth_order_to_db(df)
+    else:
+        raise ValueError(f"Unsupported table name: {table_name}")
+
+def save_ship_status_to_db(df: pd.DataFrame) -> None:
     conn = psycopg2.connect(
         dbname=os.getenv('POSTGRES_DB'),
         user=os.getenv('POSTGRES_USER'),
@@ -80,6 +88,44 @@ def save_to_db(df: pd.DataFrame) -> None:
             row['錨泊中'], row['進港作業中'], row['裝卸須知'],
             row['移泊作業中'], row['移泊裝卸作業'],
             row['出港作業中'], row['船舶已出港']
+        ))
+    
+    conn.commit()
+    cur.close()
+    conn.close()
+
+def save_ship_berth_order_to_db(df: pd.DataFrame) -> None:
+    conn = psycopg2.connect(
+        dbname=os.getenv('POSTGRES_DB'),
+        user=os.getenv('POSTGRES_USER'),
+        password=os.getenv('POSTGRES_PASSWORD'),
+        host='db'
+    )
+    cur = conn.cursor()
+    
+    for index, row in df.iterrows():
+        cur.execute('''
+            INSERT INTO ship_berth_order (
+                berth_number, berthing_time, status, pilotage_time,
+                ship_name_chinese, ship_name_english, port_agent
+            ) VALUES (%s, %s, %s, %s, %s, %s, %s)
+            ON CONFLICT (berth_number, berthing_time) DO UPDATE SET
+                status = EXCLUDED.status,
+                pilotage_time = EXCLUDED.pilotage_time,
+                ship_name_chinese = EXCLUDED.ship_name_chinese,
+                ship_name_english = EXCLUDED.ship_name_english,
+                port_agent = EXCLUDED.port_agent,
+                updated_at = CURRENT_TIMESTAMP
+            WHERE (
+                EXCLUDED.status != ship_berth_order.status OR
+                EXCLUDED.pilotage_time != ship_berth_order.pilotage_time OR
+                EXCLUDED.ship_name_chinese != ship_berth_order.ship_name_chinese OR
+                EXCLUDED.ship_name_english != ship_berth_order.ship_name_english OR
+                EXCLUDED.port_agent != ship_berth_order.port_agent
+            )
+        ''', (
+            row['船席'], row['靠泊時間'], row['動態'], row['引水時間'],
+            row['中文船名'], row['英文船名'], row['港代理']
         ))
     
     conn.commit()
