@@ -13,6 +13,7 @@ services:
 
   notifier:
     build: ./notifier
+    platform: linux/amd64
     image: ghcr.io/jotpalch/portcdm-notifier
     depends_on:
       - db
@@ -27,6 +28,7 @@ services:
 
   crawler:
     build: ./crawler
+    platform: linux/amd64
     image: ghcr.io/jotpalch/portcdm-crawler
     depends_on:
       - notifier
