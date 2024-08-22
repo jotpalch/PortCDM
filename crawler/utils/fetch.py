@@ -81,7 +81,6 @@ def fetch_webpage(url: str) -> str:
         print(f"Failed to retrieve the webpage. Status code: {response.status_code}")
         return None
 
-
 def fetch_ship_berth_order(url: str) -> list[dict]:
     """
     Fetches data from the Kaohsiung Port website using Selenium.
