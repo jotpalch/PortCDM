@@ -70,7 +70,6 @@ def extract_event_data(html: str, cols: list[str]) -> Tuple[bool, pd.DataFrame]:
 
         if done:
             break
-
         result_df = pd.concat([result_df, pd.DataFrame([event_data], columns=cols)], ignore_index=True)
         event_num += 1
 
