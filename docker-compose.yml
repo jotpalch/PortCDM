@@ -12,6 +12,7 @@ services:
       - "5432:5432"
 
   notifier:
+    container_name: notifier
     build: ./notifier
     platform: linux/amd64
     image: ghcr.io/jotpalch/portcdm-notifier
@@ -34,6 +35,7 @@ services:
     command: ["./wait-for-it.sh", "db:5432", "--", "python", "main.py"]
 
   crawler:
+    container_name: crawler
     build: ./crawler
     platform: linux/amd64
     image: ghcr.io/jotpalch/portcdm-crawler
