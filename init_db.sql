@@ -11,9 +11,13 @@ CREATE TABLE IF NOT EXISTS ship_berth_order (
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
--- Create ship_status table
-CREATE TABLE IF NOT EXISTS ship_status (
+-- Create ship_voyage table
+CREATE TABLE IF NOT EXISTS ship_voyage (
     ship_voyage_number VARCHAR(10) PRIMARY KEY,
+    pass_10_miles_time VARCHAR(20),
+    pass_5_miles_time VARCHAR(20)
+);
+
 -- Create ship_events table
 CREATE TABLE IF NOT EXISTS ship_events (
     id SERIAL PRIMARY KEY,
