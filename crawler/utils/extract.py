@@ -70,8 +70,30 @@ def extract_event_data(html: str, cols: list[str]) -> Tuple[bool, pd.DataFrame]:
 
         if done:
             break
-
         result_df = pd.concat([result_df, pd.DataFrame([event_data], columns=cols)], ignore_index=True)
         event_num += 1
 
     return True, result_df
+
+def extract_miles_data(html: str, cols: list[str]):
+
+
+    soup = BeautifulSoup(html, 'html.parser')
+    #print(soup)
+    
+    miles_prefix = "ASPx_港外船舶進港_tccell0_"
+    miles_ids = [f"{miles_prefix}{num}" for num in range(2,4)]
+    event_data =[]
+    for miles_id in miles_ids:
+        content = soup.find(id = miles_id)
+        
+        if content:
+            event_data.append(content.get_text(strip=True))
+            if event_data[len(event_data)-1]=="":    
+                event_data[len(event_data)-1] = ("NO_DATA")
+            
+        else:
+            event_data.append("NO_DATA")
+    #result_df = pd.DataFrame([event_data], columns=cols)
+    return event_data
+
