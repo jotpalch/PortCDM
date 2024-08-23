@@ -1,10 +1,11 @@
 import os
 import time
+from typing import List
 from utils.fetch import fetch_ship_webpage, fetch_webpage, fetch_ship_berth_order
-from utils.extract import extract_ship_data, extract_event_data
+from utils.extract import extract_ship_data, extract_event_data, extract_miles_data
 from utils.save import save_to_csv, save_to_html, save_to_db
 import pandas as pd
-from datetime import datetime
+from datetime import datetime, timedelta
 
 def fetch_ship_data(url: str, output_csv_path: str, output_html_path: str, ship_content_id_prefix: str, cols: list[str]) -> pd.DataFrame:
     # Fetch the webpage
@@ -15,7 +16,7 @@ def fetch_ship_data(url: str, output_csv_path: str, output_html_path: str, ship_
     result_df = pd.DataFrame(columns=cols)
     ship_id = 0
     while True:
-        ids = [f"{ship_content_id_prefix}{ship_id}_{num}" for num in range(0, 14)]
+        ids = [f"{ship_content_id_prefix}{ship_id}_{num}" for num in range(14)]
 
         result, df = extract_ship_data(html, ids, cols)
         if not result:
@@ -43,7 +44,8 @@ def fetch_ship_event_data(ship_df: pd.DataFrame, event_url: str, event_cols: lis
         if result:
             save_to_csv(df, f"output/event_{row['船編']}_{row['航次']}.csv")
 
-            # TODO: Save the event data to the database
+            df['船編航次'] = row['船編航次']
+            save_to_db(df, table_name='ship_events')
             
 def fetch_ship_berth_order_data(url: str, output_csv_path: str) -> None:
     ship_berth_order_data = fetch_ship_berth_order(url)
@@ -78,7 +80,7 @@ if __name__ == '__main__':
     interval_time = int(os.getenv('INTERVAL_TIME', 300))
 
     while True:
-        print(f'{datetime.now().strftime("%Y-%m-%d %H:%M:%S")} 爬取網站資料')
+        print(f'{(datetime.now() + timedelta(hours=8)).strftime("%Y-%m-%d %H:%M:%S")} 爬取網站資料')
 
         try:
             ship_df = fetch_ship_data(url, output_csv_path, output_html_path, ship_content_id_prefix, cols)
