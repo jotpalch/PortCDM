@@ -54,8 +54,26 @@ def fetch_ship_berth_order_data(url: str, output_csv_path: str) -> None:
 
     save_to_db(ship_berth_order_df, table_name='ship_berth_order')
 
+def fetch_ship_pass_5_and_10_miles(ship_df: pd.DataFrame, miles_pass_url: str, miles_cols: List[str], output_csv_path: str) -> None:
+    cols = ["船編航次"] + miles_cols
+    
+    def fetch_miles_data(row):
+        url = f"{miles_pass_url}?SP_ID={row['船編']}&SP_SERIAL={row['航次']}"
+        html = fetch_webpage(url)
+        miles_time = extract_miles_data(html, miles_cols)
+        return [row['船編航次']] + miles_time
+
+    ship_pass_time_data = ship_df.apply(fetch_miles_data, axis=1, result_type='expand').values.tolist()
+    
+    ship_pass_time_df = pd.DataFrame(ship_pass_time_data, columns=cols)
+    
+    ship_pass_time_csv_path = output_csv_path.replace('.csv', '_ship_pass_time.csv')
+    save_to_csv(ship_pass_time_df, ship_pass_time_csv_path)
+
+    save_to_db(ship_pass_time_df, table_name='ship_voyage') 
+
 if __name__ == '__main__':
-    from config import url, ship_berth_order_url, event_url, output_html_path, output_csv_path, ship_content_id_prefix, cols, event_url, event_cols
+    from config import url, ship_berth_order_url, event_url, miles_pass_url, output_html_path, output_csv_path, ship_content_id_prefix, cols, event_url, event_cols, miles_cols
 
     interval_time = int(os.getenv('INTERVAL_TIME', 300))
 
@@ -64,7 +82,11 @@ if __name__ == '__main__':
 
         try:
             ship_df = fetch_ship_data(url, output_csv_path, output_html_path, ship_content_id_prefix, cols)
+
             fetch_ship_event_data(ship_df, event_url, event_cols)
+
+            fetch_ship_pass_5_and_10_miles(ship_df, miles_pass_url, miles_cols, output_csv_path)
+
             fetch_ship_berth_order_data(ship_berth_order_url, output_csv_path)
         except Exception as e:
             print(f"An error occurred: {str(e)}")
