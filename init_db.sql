@@ -54,9 +54,3 @@ CREATE TRIGGER update_ship_status_timestamp
 BEFORE UPDATE ON ship_status
 FOR EACH ROW
 EXECUTE FUNCTION update_timestamp();
-
--- Create the trigger for ship_berth_order table
-CREATE TRIGGER update_ship_berth_order_timestamp
-BEFORE UPDATE ON ship_berth_order
-FOR EACH ROW
-EXECUTE FUNCTION update_timestamp();
