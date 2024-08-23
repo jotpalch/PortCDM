@@ -1,3 +1,12 @@
+-- Create ship_status table
+CREATE TABLE IF NOT EXISTS ship_status (
+    ship_voyage_number VARCHAR(10) PRIMARY KEY,
+    ship_name VARCHAR(100),
+    latest_event VARCHAR(100),
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
 -- Create ship_berth_order table
 CREATE TABLE IF NOT EXISTS ship_berth_order (
     berth_number VARCHAR(10),
@@ -7,8 +16,7 @@ CREATE TABLE IF NOT EXISTS ship_berth_order (
     ship_name_chinese VARCHAR(50),
     ship_name_english VARCHAR(50),
     port_agent VARCHAR(50),
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    PRIMARY KEY (berth_number, ship_name_english)
 );
 
 -- Create ship_voyage table
