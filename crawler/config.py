@@ -1,6 +1,7 @@
 url = 'https://sdci.kh.twport.com.tw/khbweb/UA1007.aspx'
 ship_berth_order_url = "https://sdci3.kh.twport.com.tw/khbweb/oh015.aspx"
 event_url = 'https://sdci.kh.twport.com.tw/khbweb/UA3007.aspx'
+miles_pass_url = 'https://sdci.kh.twport.com.tw/khbweb/UA5007.aspx'
 output_html_path = 'output/output.html'
 output_csv_path = 'output/output.csv'
 ship_content_id_prefix = 'ASPx_船舶即時動態_tccell'
