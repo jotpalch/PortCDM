@@ -1,6 +1,6 @@
 from bs4 import BeautifulSoup
 import pandas as pd
-from typing import Tuple
+from typing import Tuple, List
 
 def extract_ship_data(html: str, ids: list[str], cols: list[str]) -> Tuple[bool, pd.DataFrame]:
     """
@@ -75,3 +75,34 @@ def extract_event_data(html: str, cols: list[str]) -> Tuple[bool, pd.DataFrame]:
         event_num += 1
 
     return True, result_df
+
+def extract_miles_data(html: str, cols: List[str]) -> List[str]:
+    """
+    Extracts mile passing data from the given HTML content.
+
+    Args:
+        html (str): The HTML content of the webpage.
+        cols (List[str]): List of column names for the mile data.
+
+    Returns:
+        List[str]: A list containing the extracted mile passing data.
+    """
+    soup = BeautifulSoup(html, 'html.parser')
+    
+    miles_prefix = "ASPx_港外船舶進港_tccell0_"
+    miles_ids = [f"{miles_prefix}{num}" for num in range(2, 4)]
+    
+    event_data = []
+    for miles_id in miles_ids:
+        content = soup.find(id=miles_id)
+        
+        if content:
+            data = content.get_text(strip=True)
+            event_data.append(data if data else "null")
+        else:
+            event_data.append("null")
+    
+    if len(event_data) != len(cols):
+        raise ValueError(f"Mismatch between extracted data ({len(event_data)}) and provided columns ({len(cols)})")
+    
+    return event_data
