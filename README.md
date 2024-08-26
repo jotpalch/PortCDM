@@ -21,11 +21,12 @@ The project is composed of three main services:
    POSTGRES_USER=portcdm
    POSTGRES_PASSWORD=password
    LINE_NOTIFY_TOKEN=<your_line_notify_token>
-   LINE_NOTIFY_TOKEN_Pilot=<your_line_notify_token>
-   LINE_NOTIFY_TOKEN_Unmooring=<your_line_notify_token>
-   LINE_NOTIFY_TOKEN_Tugboat=<your_line_notify_token>
-   LINE_NOTIFY_TOKEN_ShippingAgent=<your_line_notify_token>
-   LINE_NOTIFY_TOKEN_LoadingUnloading=<your_line_notify_token>
+   LINE_NOTIFY_TOKEN_PILOT=<your_line_notify_token>
+   LINE_NOTIFY_TOKEN_UNMOORING=<your_line_notify_token>
+   LINE_NOTIFY_TOKEN_TUGBOAT=<your_line_notify_token>
+   LINE_NOTIFY_TOKEN_SHIPPINGAGENT=<your_line_notify_token>
+   LINE_NOTIFY_TOKEN_SHIPPINGCOMPANY=<your_line_notify_token>
+   LINE_NOTIFY_TOKEN_LOADINGUNLOADING=<your_line_notify_token>
    ```
    Adjust these values according to your specific requirements.
 
@@ -76,6 +77,10 @@ To stop the project:
 
 ```
 docker-compose down
+
+# With delete database data
+docker-compose down --volumes
+
 ```
 
 ## Additional Information

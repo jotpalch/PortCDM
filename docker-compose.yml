@@ -12,6 +12,7 @@ services:
       - "5432:5432"
 
   notifier:
+    container_name: notifier
     build: ./notifier
     platform: linux/amd64
     image: ghcr.io/jotpalch/portcdm-notifier
@@ -21,12 +22,20 @@ services:
     environment:
       PYTHONUNBUFFERED: 1
       LINE_NOTIFY_TOKEN: ${LINE_NOTIFY_TOKEN}
+      LINE_NOTIFY_TOKEN_PILOT: ${LINE_NOTIFY_TOKEN_PILOT}
+      LINE_NOTIFY_TOKEN_UNMOORING: ${LINE_NOTIFY_TOKEN_UNMOORING}
+      LINE_NOTIFY_TOKEN_TUGBOAT: ${LINE_NOTIFY_TOKEN_TUGBOAT}
+      LINE_NOTIFY_TOKEN_SHIPPINGAGENT: ${LINE_NOTIFY_TOKEN_SHIPPINGAGENT}
+      LINE_NOTIFY_TOKEN_SHIPPINGCOMPANY: ${LINE_NOTIFY_TOKEN_SHIPPINGCOMPANY}
+      LINE_NOTIFY_TOKEN_LOADINGUNLOADING: ${LINE_NOTIFY_TOKEN_LOADINGUNLOADING}
+      INTERVAL_TIME: ${INTERVAL_TIME}
       POSTGRES_DB: ${POSTGRES_DB}
       POSTGRES_USER: ${POSTGRES_USER}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
     command: ["./wait-for-it.sh", "db:5432", "--", "python", "main.py"]
 
   crawler:
+    container_name: crawler
     build: ./crawler
     platform: linux/amd64
     image: ghcr.io/jotpalch/portcdm-crawler

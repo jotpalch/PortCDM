@@ -1,10 +1,11 @@
 import os
 import time
+from typing import List
 from utils.fetch import fetch_ship_webpage, fetch_webpage, fetch_ship_berth_order
 from utils.extract import extract_ship_data, extract_event_data, extract_miles_data
 from utils.save import save_to_csv, save_to_html, save_to_db
 import pandas as pd
-from datetime import datetime
+from datetime import datetime, timedelta
 
 def fetch_ship_data(url: str, output_csv_path: str, output_html_path: str, ship_content_id_prefix: str, cols: list[str]) -> pd.DataFrame:
     # Fetch the webpage
@@ -15,7 +16,7 @@ def fetch_ship_data(url: str, output_csv_path: str, output_html_path: str, ship_
     result_df = pd.DataFrame(columns=cols)
     ship_id = 0
     while True:
-        ids = [f"{ship_content_id_prefix}{ship_id}_{num}" for num in range(0, 14)]
+        ids = [f"{ship_content_id_prefix}{ship_id}_{num}" for num in range(14)]
 
         result, df = extract_ship_data(html, ids, cols)
         if not result:
@@ -43,7 +44,8 @@ def fetch_ship_event_data(ship_df: pd.DataFrame, event_url: str, event_cols: lis
         if result:
             save_to_csv(df, f"output/event_{row['船編']}_{row['航次']}.csv")
 
-            # TODO: Save the event data to the database
+            df['船編航次'] = row['船編航次']
+            save_to_db(df, table_name='ship_events')
             
 def fetch_ship_berth_order_data(url: str, output_csv_path: str) -> None:
     ship_berth_order_data = fetch_ship_berth_order(url)
@@ -54,30 +56,23 @@ def fetch_ship_berth_order_data(url: str, output_csv_path: str) -> None:
 
     save_to_db(ship_berth_order_df, table_name='ship_berth_order')
 
-def fetch_ship_pass_5_and_10_miles(ship_df, miles_cols):
-    """
-    Fetch the time that vessel passed 5 miles and 10 miles.
-
-    Args:
-        ship_df (Dataframe): The vessel data
-        miles_cols (list): A list that include vessel number, voyage, 5 miles, 10 miles, please see the definition in config
-
-    Return:
-        ship_pass_time (Dataframe): A Dataframe that show the vessel pass 5 miles and 10 miles
-    """
-    cols = ["船編", "航次"]
-    cols = cols + miles_cols
-    ship_pass_time = pd.DataFrame(columns=cols)
-    for index, row in ship_df.iterrows():
-        url = miles_pass_url+f"?SP_ID={row['船編']}&SP_SERIAL={row['航次']}"
+def fetch_ship_pass_5_and_10_miles(ship_df: pd.DataFrame, miles_pass_url: str, miles_cols: List[str], output_csv_path: str) -> None:
+    cols = ["船編航次"] + miles_cols
+    
+    def fetch_miles_data(row):
+        url = f"{miles_pass_url}?SP_ID={row['船編']}&SP_SERIAL={row['航次']}"
         html = fetch_webpage(url)
         miles_time = extract_miles_data(html, miles_cols)
-        temp = [row['船編'], row['航次']] + miles_time
-        ship_pass_time = pd.concat([ship_pass_time, pd.DataFrame([temp], columns=cols)], ignore_index=True)
-        print(ship_pass_time)
-        
-        #print(html)
-    return ship_pass_time
+        return [row['船編航次']] + miles_time
+
+    ship_pass_time_data = ship_df.apply(fetch_miles_data, axis=1, result_type='expand').values.tolist()
+    
+    ship_pass_time_df = pd.DataFrame(ship_pass_time_data, columns=cols)
+    
+    ship_pass_time_csv_path = output_csv_path.replace('.csv', '_ship_pass_time.csv')
+    save_to_csv(ship_pass_time_df, ship_pass_time_csv_path)
+
+    save_to_db(ship_pass_time_df, table_name='ship_voyage') 
 
 if __name__ == '__main__':
     from config import url, ship_berth_order_url, event_url, miles_pass_url, output_html_path, output_csv_path, ship_content_id_prefix, cols, event_url, event_cols, miles_cols
@@ -85,15 +80,15 @@ if __name__ == '__main__':
     interval_time = int(os.getenv('INTERVAL_TIME', 300))
 
     while True:
-        print(f'{datetime.now().strftime("%Y-%m-%d %H:%M:%S")} 爬取網站資料')
+        print(f'{(datetime.now() + timedelta(hours=8)).strftime("%Y-%m-%d %H:%M:%S")} 爬取網站資料')
 
         try:
             ship_df = fetch_ship_data(url, output_csv_path, output_html_path, ship_content_id_prefix, cols)
-            
+
             fetch_ship_event_data(ship_df, event_url, event_cols)
 
-            fetch_ship_pass_5_and_10_miles(ship_df, miles_cols)
-            
+            fetch_ship_pass_5_and_10_miles(ship_df, miles_pass_url, miles_cols, output_csv_path)
+
             fetch_ship_berth_order_data(ship_berth_order_url, output_csv_path)
         except Exception as e:
             print(f"An error occurred: {str(e)}")
