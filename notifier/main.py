@@ -11,16 +11,13 @@ def send_line_notify(message, token):
     url = 'https://notify-api.line.me/api/notify'
     headers = {
         'Content-Type': 'application/x-www-form-urlencoded',
-        'Authorization': 'Bearer ' + token
+        'Authorization': f'Bearer {token}'
     }
-    data = {
-        'message': message
-    }
-    response = requests.post(url, headers=headers, data=data)
-    return response
+    data = {'message': message}
+    return requests.post(url, headers=headers, data=data)
 
-def get_recent_ship_statuses(interval):
-    conn = psycopg2.connect(
+def get_db_connection():
+    return psycopg2.connect(
         dbname=os.getenv('POSTGRES_DB'),
         user=os.getenv('POSTGRES_USER'),
         password=os.getenv('POSTGRES_PASSWORD'),
