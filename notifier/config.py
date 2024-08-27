@@ -23,7 +23,7 @@ notification_mapping: Dict[str, List[str]] = {
     "新增引水申請 (出港)": PILOT_UNMOORING_TUGBOAT_LOADING,
     "更新引水時間 (出港)": PILOT_UNMOORING_TUGBOAT_LOADING,
     "引水人上船時間 (出港)": STANDARD_RECIPIENTS,
-    "離開錨泊地時間": ["ShippingAgent", "ShippingCompany"],
+    "離開泊地時間": ["ShippingAgent", "ShippingCompany"],
     "通過15浬時間": ["ShippingAgent", "ShippingCompany"],
     "通過10浬時間": ALL_RECIPIENTS,
     "通過5浬時間": ALL_RECIPIENTS
