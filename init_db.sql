@@ -10,20 +10,22 @@ CREATE TABLE IF NOT EXISTS ship_status (
 -- Create ship_berth_order table
 CREATE TABLE IF NOT EXISTS ship_berth_order (
     berth_number VARCHAR(10),
-    berthing_time VARCHAR(20),
-    status VARCHAR(10),
-    pilotage_time VARCHAR(20),
+    berthing_time TIMESTAMP,
+    ship_status VARCHAR(10),
+    pilotage_time TIMESTAMP,
     ship_name_chinese VARCHAR(50),
     ship_name_english VARCHAR(50),
     port_agent VARCHAR(50),
-    PRIMARY KEY (berth_number, ship_name_english)
+    PRIMARY KEY (berth_number, ship_name_english, ship_status)
 );
 
 -- Create ship_voyage table
 CREATE TABLE IF NOT EXISTS ship_voyage (
     ship_voyage_number VARCHAR(10) PRIMARY KEY,
-    pass_10_miles_time VARCHAR(20),
-    pass_5_miles_time VARCHAR(20)
+    pass_10_miles_time TIMESTAMP,
+    pass_5_miles_time TIMESTAMP,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
 -- Create ship_events table
@@ -35,8 +37,8 @@ CREATE TABLE IF NOT EXISTS ship_events (
     event_name VARCHAR(100),
     navigation_status VARCHAR(50),
     pilot_order_number VARCHAR(20),
-    berth_code VARCHAR(10),
-    event_content TEXT,
+    berth_number VARCHAR(10),
+    event_content_time TIMESTAMP,
     UNIQUE (ship_voyage_number, event_time, event_name)
 );
 
@@ -52,5 +54,11 @@ $$ LANGUAGE plpgsql;
 -- Create the trigger for ship_status table
 CREATE TRIGGER update_ship_status_timestamp
 BEFORE UPDATE ON ship_status
+FOR EACH ROW
+EXECUTE FUNCTION update_timestamp();
+
+-- Create the trigger for ship_voyage table
+CREATE TRIGGER update_ship_voyage_timestamp
+BEFORE UPDATE ON ship_voyage
 FOR EACH ROW
 EXECUTE FUNCTION update_timestamp();
