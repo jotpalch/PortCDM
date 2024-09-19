@@ -221,7 +221,8 @@ def main():
         'Tugboat': os.getenv('LINE_NOTIFY_TOKEN_TUGBOAT'),
         'ShippingAgent': os.getenv('LINE_NOTIFY_TOKEN_SHIPPINGAGENT'),
         'ShippingCompany': os.getenv('LINE_NOTIFY_TOKEN_SHIPPINGCOMPANY'),
-        'LoadingUnloading': os.getenv('LINE_NOTIFY_TOKEN_LOADINGUNLOADING')
+        'LoadingUnloading': os.getenv('LINE_NOTIFY_TOKEN_LOADINGUNLOADING'),
+        'CIQS': os.getenv('LINE_NOTIFY_TOKEN_CIQS')
     }
 
     while True:
