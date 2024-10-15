@@ -32,14 +32,14 @@ def get_recent_ship_statuses(interval):
                 WITH ranked_events AS (
                     SELECT 
                         se.*,
-                        ROW_NUMBER() OVER (PARTITION BY se.ship_voyage_number, se.event_name ORDER BY se.event_time DESC) as rn
+                        ROW_NUMBER() OVER (PARTITION BY se.ship_voyage_number, se.event_name ORDER BY se.event_time DESC) AS rn
                     FROM ship_events se
                     WHERE se.event_name IN ('修改進港預報', '修改出港預報')
                 ),
                 latest_event AS (
                     SELECT 
                         se.*,
-                        ROW_NUMBER() OVER (PARTITION BY se.ship_voyage_number ORDER BY se.event_time DESC) as rn
+                        ROW_NUMBER() OVER (PARTITION BY se.ship_voyage_number ORDER BY se.event_time DESC) AS rn
                     FROM ship_events se
                 )
                 SELECT 
@@ -69,63 +69,79 @@ def get_recent_ship_statuses(interval):
             
             cur.execute(query, (interval_ago, interval_ago))
             return [process_row(row) for row in cur.fetchall()]
-
-def get_berth_and_previous_pilotage_time(ship_voyage_number, ship_name):
+        
+def get_berth_and_previous_pilotage_time_updated(interval):
     with get_db_connection() as conn:
         with conn.cursor(cursor_factory=RealDictCursor) as cur:
-            berth_query = '''
-                SELECT berth_number
-                FROM ship_events
-                WHERE ship_voyage_number = %s
-                AND berth_number IS NOT NULL
-                ORDER BY event_time DESC
-                LIMIT 1
-            '''
-            
-            cur.execute(berth_query, (ship_voyage_number,))
-            result = cur.fetchone()
-            berth_number = result['berth_number'] if result else None
-            
-            if not berth_number:
-                return None, None
-            
-            pilotage_query = '''
-                WITH current_ship AS (
-                    SELECT pilotage_time
-                    FROM ship_berth_order
-                    WHERE berth_number = %s AND CONCAT(ship_name_chinese, ship_name_english) = %s
-                    AND pilotage_time IS NOT NULL
-                    ORDER BY pilotage_time DESC
-                    LIMIT 1
+            interval_ago = datetime.now() - timedelta(seconds=interval)
+
+            query = '''
+                WITH updated_ship AS (
+                    SELECT 
+                        ROW_NUMBER() OVER (ORDER BY berth_number ASC, berthing_time ASC, pilotage_time ASC) AS row_index,
+                        * 
+                    FROM public.ship_berth_order
                 ),
-                previous_ship AS (
-                    SELECT pilotage_time
-                    FROM ship_berth_order
-                    WHERE berth_number = %s 
-                    AND pilotage_time IS NOT NULL
-                    AND pilotage_time < (SELECT pilotage_time FROM current_ship)
-                    ORDER BY pilotage_time DESC
-                    LIMIT 1
+                target_ship AS (
+                    SELECT 
+                        ROW_NUMBER() OVER (ORDER BY berth_number ASC, berthing_time ASC, pilotage_time ASC) AS row_index,
+                        * ,
+                        CONCAT(ship_name_chinese, ship_name_english) AS ship_name
+                    FROM public.ship_berth_order
+                ),
+                ranked_events AS (
+                    SELECT 
+                        se.*,
+                        ROW_NUMBER() OVER (PARTITION BY se.ship_voyage_number, se.event_name ORDER BY se.event_time DESC) AS rn
+                    FROM ship_events se
+                    WHERE se.event_name IN ('修改進港預報', '修改出港預報')
+                ),
+                latest_event AS (
+                    SELECT 
+                        se.*,
+                        ROW_NUMBER() OVER (PARTITION BY se.ship_voyage_number ORDER BY se.event_time DESC) AS rn
+                    FROM ship_events se
                 )
-                SELECT pilotage_time AS previous_pilotage_time
-                FROM previous_ship
+                SELECT 
+                    updated_ship.row_index,
+                    target_ship.berth_number,
+                    updated_ship.berthing_time,
+                    updated_ship.pilotage_time,
+                    ship_status.ship_voyage_number,
+                    target_ship.ship_name,
+                    eta.event_content_time as eta,
+                    etd.event_content_time as etd,
+                    updated_ship.updated_at
+                FROM updated_ship
+                LEFT JOIN target_ship ON target_ship.row_index = updated_ship.row_index + 1
+                JOIN ship_status ON ship_status.ship_name = target_ship.ship_name
+                LEFT JOIN ranked_events eta ON ship_status.ship_voyage_number = eta.ship_voyage_number 
+                    AND eta.event_name = '修改進港預報' AND eta.rn = 1
+                LEFT JOIN ranked_events etd ON ship_status.ship_voyage_number = etd.ship_voyage_number 
+                    AND etd.event_name = '修改出港預報' AND etd.rn = 1
+                LEFT JOIN latest_event le ON ship_status.ship_voyage_number = le.ship_voyage_number AND le.rn = 1
+                WHERE
+                    target_ship.berth_number = updated_ship.berth_number and
+                    updated_ship.updated_at >= %s;
             '''
-            
-            cur.execute(pilotage_query, (berth_number, ship_name, berth_number))
-            result = cur.fetchone()
-            previous_pilotage_time = result['previous_pilotage_time'] if result else None
-            
-            return berth_number, previous_pilotage_time
+
+            cur.execute(query, (interval_ago,))
+            return [process_row_for_berth_order(row) for row in cur.fetchall()]
 
 def process_row(row):
     latest_event = row['latest_event_name']
     if row['ship_voyage_updated_at'] > row['updated_at']:
         if row['pass_5_miles_time']:
             latest_event = '通過5浬時間'
+            row['latest_event_content_time'] = row['pass_5_miles_time'] 
+            row['latest_event_source'] = "VTS轉檔"
         elif row['pass_10_miles_time']:
             latest_event = '通過10浬時間'
+            row['latest_event_content_time'] = row['pass_10_miles_time']
+            row['latest_event_source'] = "VTS轉檔"
         
     return {
+        '訊息格式': '一般訊息',
         '船名': row['ship_name'],
         '船編': row['ship_voyage_number'][:6],
         '航次': row['ship_voyage_number'][6:10],
@@ -136,6 +152,26 @@ def process_row(row):
         '事件來源': row['latest_event_source'],
         '更新時間': row['ship_voyage_updated_at'] if latest_event in BERTH_ORDER_EVENTS else row['latest_event_time'] 
     }
+
+def process_row_for_berth_order(row):
+    if row['berthing_time'] is not None:
+        trigger_event = '靠泊'
+    else:
+        trigger_event = '引水'
+    trigger_event_time = row['berthing_time'] if row['berthing_time'] is not None else row['pilotage_time']
+
+    return {
+        '訊息格式': '接靠順序',
+        '船名': row['ship_name'],
+        '船編': row['ship_voyage_number'][:6],
+        '航次': row['ship_voyage_number'][6:10],
+        'ETA': row['eta'],
+        'ETD': row['etd'],
+        '碼頭代號': row['berth_number'],
+        '觸發事件': trigger_event,
+        '事件時間': trigger_event_time,
+        '更新時間': row['updated_at']
+    }   
 
 def convert_inout_pilotage_event(event_name, navigation_status):
     return f"{event_name} ({navigation_status})" if event_name in INOUT_PILOTAGE_EVENTS else event_name
@@ -163,11 +199,6 @@ ETD: {format_datetime(row['ETD'])}
 {format_datetime(row['更新時間']) if row['更新時間'] else "N/A"}"""
 
 def format_previous_pilotage_message(row):
-    berth_number, previous_pilotage_time = get_berth_and_previous_pilotage_time(row['船編'] + row['航次'], row['船名'])
-    
-    if not previous_pilotage_time:
-        return None
-
     return f"""
 
 船名: {row['船名']}
@@ -176,17 +207,15 @@ def format_previous_pilotage_message(row):
 ETA: {format_datetime(row['ETA'])}
 ETD: {format_datetime(row['ETD'])}
 
-最新事件: {row['最新消息']}
-碼頭代號: {berth_number or "N/A"}
-前一艘靠泊船舶引水時間:
-{format_datetime(previous_pilotage_time)}
+碼頭代號: {row['碼頭代號']}
+前一艘船舶{row['觸發事件']}時間: {format_datetime(row['事件時間'])}
 
 更新時間: 
 {format_datetime(row['更新時間']) if row['更新時間'] else "N/A"}"""
 
 def send_notifications(row, line_notify_tokens, original_token):
     latest_event = row['最新消息']
-    message = format_previous_pilotage_message(row) if latest_event in BERTH_ORDER_EVENTS else format_message(row)
+    message = format_message(row)
     
     if message is None:
         return
@@ -211,6 +240,16 @@ def send_notifications(row, line_notify_tokens, original_token):
     else:
         print(f'{(datetime.now() + timedelta(hours=8)).strftime("%Y-%m-%d %H:%M:%S")} 非目標事件: {row["船名"]} - {latest_event}')
 
+def send_notifications_for_berth_order(row, original_token):
+    message = format_previous_pilotage_message(row)
+    if message is None:
+        return
+
+    if original_token:
+        response = send_line_notify(message, original_token)
+        status = '成功' if response.status_code == 200 else '失敗'
+        print(f'{(datetime.now() + timedelta(hours=8)).strftime("%Y-%m-%d %H:%M:%S")} 通知發送{status}: {row["船名"]} - 事件: 碼頭{row["碼頭代號"]}-{row["觸發事件"]}')
+
 def main():
     original_token = os.getenv('LINE_NOTIFY_TOKEN')
     interval_time = int(os.getenv('INTERVAL_TIME', 180))
@@ -221,15 +260,23 @@ def main():
         'Tugboat': os.getenv('LINE_NOTIFY_TOKEN_TUGBOAT'),
         'ShippingAgent': os.getenv('LINE_NOTIFY_TOKEN_SHIPPINGAGENT'),
         'ShippingCompany': os.getenv('LINE_NOTIFY_TOKEN_SHIPPINGCOMPANY'),
-        'LoadingUnloading': os.getenv('LINE_NOTIFY_TOKEN_LOADINGUNLOADING')
+        'LoadingUnloading': os.getenv('LINE_NOTIFY_TOKEN_LOADINGUNLOADING'),
+        'CIQS': os.getenv('LINE_NOTIFY_TOKEN_CIQS')
     }
 
     while True:
-        print(f'{datetime.now().strftime("%Y-%m-%d %H:%M:%S")} 查看資料庫有無更新')
-        rows = get_recent_ship_statuses(interval_time+1)
+        print(f'{(datetime.now() + timedelta(hours=8)).strftime("%Y-%m-%d %H:%M:%S")} 查看資料庫有無更新')
+        interval = interval_time + 1
+        rows = []
+        rows.extend(get_recent_ship_statuses(interval))
+        rows.extend(get_berth_and_previous_pilotage_time_updated(interval))
 
         for row in rows:
-            send_notifications(row, line_notify_tokens, original_token)
+            if "YM " in row["船名"]:
+                if row['訊息格式'] == '接靠順序':
+                    send_notifications_for_berth_order(row, original_token)
+                else:
+                    send_notifications(row, line_notify_tokens, original_token)
 
         time.sleep(interval_time)
 

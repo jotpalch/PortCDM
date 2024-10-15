@@ -42,14 +42,15 @@ def fetch_ship_event_data(ship_df: pd.DataFrame, event_url: str, event_cols: lis
         html = fetch_webpage(url)
         result, df = extract_event_data(html, event_cols)
         if result:
-            save_to_csv(df, f"output/event_{row['船編']}_{row['航次']}.csv")
-
             df['船編航次'] = row['船編航次']
             save_to_db(df, table_name='ship_events')
             
 def fetch_ship_berth_order_data(url: str, output_csv_path: str) -> None:
     ship_berth_order_data = fetch_ship_berth_order(url)
     ship_berth_order_df = pd.DataFrame(ship_berth_order_data)
+
+    # filter out the same 船席,動態,中文船名 only keep the latest
+    ship_berth_order_df = ship_berth_order_df.drop_duplicates(subset=['船席', '動態', '中文船名'], keep='last')
 
     berth_order_csv_path = output_csv_path.replace('.csv', '_ship_berth_order.csv')
     save_to_csv(ship_berth_order_df, berth_order_csv_path)
@@ -90,6 +91,8 @@ if __name__ == '__main__':
             fetch_ship_pass_5_and_10_miles(ship_df, miles_pass_url, miles_cols, output_csv_path)
 
             fetch_ship_berth_order_data(ship_berth_order_url, output_csv_path)
+
+            print(f'{(datetime.now() + timedelta(hours=8)).strftime("%Y-%m-%d %H:%M:%S")} 爬取資料完成')
         except Exception as e:
             print(f"An error occurred: {str(e)}")
 
