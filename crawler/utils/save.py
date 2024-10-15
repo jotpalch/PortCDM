@@ -67,11 +67,16 @@ def save_ship_berth_order_to_db(df: pd.DataFrame) -> None:
             berth_number, berthing_time, ship_status, pilotage_time,
             ship_name_chinese, ship_name_english, port_agent
         ) VALUES (%s, %s, %s, %s, %s, %s, %s)
-        ON CONFLICT (berth_number, ship_name_english, ship_status) DO UPDATE SET
+        ON CONFLICT (berth_number, ship_name_chinese, ship_status) DO UPDATE SET
             berthing_time = EXCLUDED.berthing_time,
             pilotage_time = EXCLUDED.pilotage_time,
-            ship_name_chinese = EXCLUDED.ship_name_chinese,
-            port_agent = EXCLUDED.port_agent
+            ship_name_english = EXCLUDED.ship_name_english,
+            port_agent = EXCLUDED.port_agent,
+            updated_at = CURRENT_TIMESTAMP
+        WHERE EXCLUDED.berthing_time != ship_berth_order.berthing_time
+        OR EXCLUDED.pilotage_time != ship_berth_order.pilotage_time
+        OR EXCLUDED.ship_name_english != ship_berth_order.ship_name_english
+        OR EXCLUDED.port_agent != ship_berth_order.port_agent
     '''
 
     data = [(row['船席'], 

@@ -16,7 +16,9 @@ CREATE TABLE IF NOT EXISTS ship_berth_order (
     ship_name_chinese VARCHAR(50),
     ship_name_english VARCHAR(50),
     port_agent VARCHAR(50),
-    PRIMARY KEY (berth_number, ship_name_english, ship_status)
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (berth_number, ship_name_chinese, ship_status)
 );
 
 -- Create ship_voyage table
@@ -62,3 +64,10 @@ CREATE TRIGGER update_ship_voyage_timestamp
 BEFORE UPDATE ON ship_voyage
 FOR EACH ROW
 EXECUTE FUNCTION update_timestamp();
+
+-- Create the trigger for ship_berth_order table
+CREATE TRIGGER update_ship_berth_order_timestamp
+BEFORE UPDATE ON ship_berth_order
+FOR EACH ROW
+EXECUTE FUNCTION update_timestamp();
+
