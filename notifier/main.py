@@ -185,33 +185,33 @@ def format_datetime(dt):
 def format_message(row):
     return f"""
 
-    船名: {row['船名']}
-    船編: {row['船編']}
-    航次: {row['航次']}
-    ETA: {format_datetime(row['ETA'])}
-    ETD: {format_datetime(row['ETD'])}
+船名: {row['船名']}
+船編: {row['船編']}
+航次: {row['航次']}
+ETA: {format_datetime(row['ETA'])}
+ETD: {format_datetime(row['ETD'])}
 
-    最新事件: {row['最新消息']}
-    事件時間: {format_datetime(row['事件時間'])}
-    事件來源: {row['事件來源']}
+最新事件: {row['最新消息']}
+事件時間: {format_datetime(row['事件時間'])}
+事件來源: {row['事件來源']}
 
-    更新時間: 
-    {format_datetime(row['更新時間']) if row['更新時間'] else "N/A"}"""
+更新時間: 
+{format_datetime(row['更新時間']) if row['更新時間'] else "N/A"}"""
 
 def format_previous_pilotage_message(row):
     return f"""
 
-    船名: {row['船名']}
-    船編: {row['船編']}
-    航次: {row['航次']}
-    ETA: {format_datetime(row['ETA'])}
-    ETD: {format_datetime(row['ETD'])}
+船名: {row['船名']}
+船編: {row['船編']}
+航次: {row['航次']}
+ETA: {format_datetime(row['ETA'])}
+ETD: {format_datetime(row['ETD'])}
 
-    碼頭代號: {row['碼頭代號']}
-    前一艘船舶{row['觸發事件']}時間: {format_datetime(row['事件時間'])}
+碼頭代號: {row['碼頭代號']}
+前一艘船舶{row['觸發事件']}時間: {format_datetime(row['事件時間'])}
 
-    更新時間: 
-    {format_datetime(row['更新時間']) if row['更新時間'] else "N/A"}"""
+更新時間: 
+{format_datetime(row['更新時間']) if row['更新時間'] else "N/A"}"""
 
 def send_notifications(row, line_notify_tokens, original_token):
     latest_event = row['最新消息']
