@@ -86,7 +86,6 @@ def save_ship_berth_order_to_db(df: pd.DataFrame) -> None:
              row['中文船名'], 
              row['英文船名'], 
              row['港代理']) for _, row in df.iterrows()]
-    
     execute_batch_query(query, data)
 
 def save_ship_pass_time_to_db(df: pd.DataFrame) -> None:

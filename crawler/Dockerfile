@@ -1,10 +1,11 @@
 # Description: Dockerfile for the selenium crawler
 
 # Use the official debian slim image
-FROM python:3.10.14-slim-bullseye as base
+# FROM python:3.10.14-slim-bullseye as base
 
 # build stage
-FROM base as builder
+# FROM base as builder
+FROM python:3.10.14-slim-bullseye as builder
 
 # Define Chrome and ChromeDriver versions
 ENV CHROME_VERSION=114.0.5735.90

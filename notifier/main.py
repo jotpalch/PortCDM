@@ -159,7 +159,7 @@ def process_row_for_berth_order(row):
     else:
         trigger_event = '引水'
     trigger_event_time = row['berthing_time'] if row['berthing_time'] is not None else row['pilotage_time']
-
+    print(row['berth_number'])
     return {
         '訊息格式': '接靠順序',
         '船名': row['ship_name'],
@@ -185,33 +185,33 @@ def format_datetime(dt):
 def format_message(row):
     return f"""
 
-船名: {row['船名']}
-船編: {row['船編']}
-航次: {row['航次']}
-ETA: {format_datetime(row['ETA'])}
-ETD: {format_datetime(row['ETD'])}
+    船名: {row['船名']}
+    船編: {row['船編']}
+    航次: {row['航次']}
+    ETA: {format_datetime(row['ETA'])}
+    ETD: {format_datetime(row['ETD'])}
 
-最新事件: {row['最新消息']}
-事件時間: {format_datetime(row['事件時間'])}
-事件來源: {row['事件來源']}
+    最新事件: {row['最新消息']}
+    事件時間: {format_datetime(row['事件時間'])}
+    事件來源: {row['事件來源']}
 
-更新時間: 
-{format_datetime(row['更新時間']) if row['更新時間'] else "N/A"}"""
+    更新時間: 
+    {format_datetime(row['更新時間']) if row['更新時間'] else "N/A"}"""
 
 def format_previous_pilotage_message(row):
     return f"""
 
-船名: {row['船名']}
-船編: {row['船編']}
-航次: {row['航次']}
-ETA: {format_datetime(row['ETA'])}
-ETD: {format_datetime(row['ETD'])}
+    船名: {row['船名']}
+    船編: {row['船編']}
+    航次: {row['航次']}
+    ETA: {format_datetime(row['ETA'])}
+    ETD: {format_datetime(row['ETD'])}
 
-碼頭代號: {row['碼頭代號']}
-前一艘船舶{row['觸發事件']}時間: {format_datetime(row['事件時間'])}
+    碼頭代號: {row['碼頭代號']}
+    前一艘船舶{row['觸發事件']}時間: {format_datetime(row['事件時間'])}
 
-更新時間: 
-{format_datetime(row['更新時間']) if row['更新時間'] else "N/A"}"""
+    更新時間: 
+    {format_datetime(row['更新時間']) if row['更新時間'] else "N/A"}"""
 
 def send_notifications(row, line_notify_tokens, original_token):
     latest_event = row['最新消息']
@@ -219,7 +219,6 @@ def send_notifications(row, line_notify_tokens, original_token):
     
     if message is None:
         return
-
     if latest_event in notification_mapping:
         for stakeholder in notification_mapping[latest_event]:
             token = line_notify_tokens.get(stakeholder)
@@ -244,11 +243,34 @@ def send_notifications_for_berth_order(row, original_token):
     message = format_previous_pilotage_message(row)
     if message is None:
         return
-
+    print(row)
     if original_token:
         response = send_line_notify(message, original_token)
         status = '成功' if response.status_code == 200 else '失敗'
         print(f'{(datetime.now() + timedelta(hours=8)).strftime("%Y-%m-%d %H:%M:%S")} 通知發送{status}: {row["船名"]} - 事件: 碼頭{row["碼頭代號"]}-{row["觸發事件"]}')
+
+def get_ship_berth_and_port_agent():
+    with get_db_connection() as conn:
+        with conn.cursor(cursor_factory=RealDictCursor) as cur:
+
+                query = '''
+                SELECT
+                    sbo.berth_number,
+                    sbo.port_agent,
+                    sbo.ship_name_chinese
+                FROM ship_berth_order sbo
+                '''
+                cur.execute(query)
+                # for row in cur.fetchall():
+                #     print(row)
+                return [row for row in cur.fetchall()]
+
+def combine_ship_and_berth(rows, ship_berth):
+    for row in rows:
+        for i in range(len(ship_berth)):
+            if ship_berth[i]['ship_name_chinese'] in row["船名"]:
+                row.update({'碼頭代號': ship_berth[i]['berth_number'], '港代': ship_berth[i]['port_agent']})
+    return(rows)
 
 def main():
     original_token = os.getenv('LINE_NOTIFY_TOKEN')
@@ -261,7 +283,9 @@ def main():
         'ShippingAgent': os.getenv('LINE_NOTIFY_TOKEN_SHIPPINGAGENT'),
         'ShippingCompany': os.getenv('LINE_NOTIFY_TOKEN_SHIPPINGCOMPANY'),
         'LoadingUnloading': os.getenv('LINE_NOTIFY_TOKEN_LOADINGUNLOADING'),
-        'CIQS': os.getenv('LINE_NOTIFY_TOKEN_CIQS')
+        'CIQS': os.getenv('LINE_NOTIFY_TOKEN_CIQS'),
+        'PierLIENHAI': os.getenv('LINE_NOTIFY_TOKEN_PIER_LIEN_HAI'),
+        'PierSelfOperated': os.getenv('LINE_NOTIFY_TOKEN_PIER_SELF_OPERATED')
     }
 
     while True:
@@ -270,13 +294,28 @@ def main():
         rows = []
         rows.extend(get_recent_ship_statuses(interval))
         rows.extend(get_berth_and_previous_pilotage_time_updated(interval))
-
+        ship_berth_and_port_agent = get_ship_berth_and_port_agent()
+        rows = combine_ship_and_berth(rows, ship_berth_and_port_agent)
         for row in rows:
-            if "YM " in row["船名"]:
-                if row['訊息格式'] == '接靠順序':
-                    send_notifications_for_berth_order(row, original_token)
-                else:
+            try:
+                if "陽明海運" in row["港代"]:
+                    if row['訊息格式'] == '接靠順序':
+                        send_notifications_for_berth_order(row, original_token)
+                    else:
+                        send_notifications(row, line_notify_tokens, original_token)
+                if "萬海航運公司" in row["港代"]:
+                    if row['訊息格式'] == '接靠順序':
+                        send_notifications_for_berth_order(row, original_token)
+                    else:
+                        send_notifications(row, line_notify_tokens, original_token)
+            except:
+                print("NO PORT AGENT")
+            try: 
+                if row['碼頭代號'] == '1042' or row['碼頭代號'] == '1043' or row['碼頭代號'] == '1120' or row['碼頭代號'] == '1121' :
                     send_notifications(row, line_notify_tokens, original_token)
+            except:
+                print("NO PORT")
+
 
         time.sleep(interval_time)
 
