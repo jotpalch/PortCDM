@@ -39,16 +39,18 @@ def fetch_ship_webpage(url: str) -> str:
     
     # Will concat all the pages
     html = driver.page_source
-
-    button = driver.find_element(By.ID, 'ASPx_船舶即時動態_DXPagerBottom_PBN')
+    
     i = 0
     while True:
+        try:
+            button = driver.find_element(By.ID, 'ASPx_船舶即時動態_DXPagerBottom_PBN')
+        except:
+            break
         if i%20 == 19:
             button.click()
             time.sleep(5)
 
             html += driver.page_source
-
             button = driver.find_element(By.ID, 'ASPx_船舶即時動態_DXPagerBottom_PBN')
 
             if button.get_attribute('onclick') == None:
@@ -98,7 +100,6 @@ def fetch_ship_berth_order(url: str) -> list[dict]:
     chrome_options.add_argument("--no-sandbox")
     chrome_options.add_argument("--disable-dev-shm-usage")
     chrome_options.add_argument("--window-size=1920x1080")
-
     # Use the ChromeDriverManager to automatically download the correct version of the ChromeDriver
     service = Service('/usr/bin/chromedriver')
     driver = webdriver.Chrome(service=service, options=chrome_options)
@@ -106,12 +107,10 @@ def fetch_ship_berth_order(url: str) -> list[dict]:
     try:
         # Navigate to the website
         driver.get(url)
-
         # Wait for the table to load
         table = WebDriverWait(driver, 10).until(
             EC.presence_of_element_located((By.CLASS_NAME, "dxgvControl_PlasticBlue"))
         )
-
         # Create a list to store table data
         data = []
 
@@ -120,6 +119,7 @@ def fetch_ship_berth_order(url: str) -> list[dict]:
 
         # Extract data from table rows
         rows = table.find_elements(By.CSS_SELECTOR, ".dxgvDataRow_PlasticBlue, .dxgvDataRow_PlasticBlue.dxgvDataRowAlt_PlasticBlue")
+        
         for row in rows:
             # Extract data from each cell
             row_data = [td.text.strip() for td in row.find_elements(By.CLASS_NAME, "dxgv")]
