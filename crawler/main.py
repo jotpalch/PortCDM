@@ -48,11 +48,13 @@ def fetch_ship_event_data(ship_df: pd.DataFrame, event_url: str, event_cols: lis
 def fetch_ship_berth_order_data(url: str, output_csv_path: str) -> None:
     ship_berth_order_data = fetch_ship_berth_order(url)
     ship_berth_order_df = pd.DataFrame(ship_berth_order_data)
+    
     # filter out the same 船席,動態,中文船名 only keep the latest
     ship_berth_order_df = ship_berth_order_df.drop_duplicates(subset=['船席', '動態', '中文船名'], keep='last')
 
     berth_order_csv_path = output_csv_path.replace('.csv', '_ship_berth_order.csv')
     save_to_csv(ship_berth_order_df, berth_order_csv_path)
+    
     save_to_db(ship_berth_order_df, table_name='ship_berth_order')
 
 def fetch_ship_pass_5_and_10_miles(ship_df: pd.DataFrame, miles_pass_url: str, miles_cols: List[str], output_csv_path: str) -> None:
