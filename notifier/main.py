@@ -159,7 +159,7 @@ def process_row_for_berth_order(row):
     else:
         trigger_event = '引水'
     trigger_event_time = row['berthing_time'] if row['berthing_time'] is not None else row['pilotage_time']
-    
+
     return {
         '訊息格式': '接靠順序',
         '船名': row['ship_name'],
@@ -243,7 +243,7 @@ def send_notifications_for_berth_order(row, original_token):
     message = format_previous_pilotage_message(row)
     if message is None:
         return
-    
+
     if original_token:
         response = send_line_notify(message, original_token)
         status = '成功' if response.status_code == 200 else '失敗'
