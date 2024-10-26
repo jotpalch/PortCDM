@@ -159,7 +159,7 @@ def process_row_for_berth_order(row):
     else:
         trigger_event = '引水'
     trigger_event_time = row['berthing_time'] if row['berthing_time'] is not None else row['pilotage_time']
-    print(row['berth_number'])
+    
     return {
         '訊息格式': '接靠順序',
         '船名': row['ship_name'],
@@ -243,7 +243,7 @@ def send_notifications_for_berth_order(row, original_token):
     message = format_previous_pilotage_message(row)
     if message is None:
         return
-    print(row)
+    
     if original_token:
         response = send_line_notify(message, original_token)
         status = '成功' if response.status_code == 200 else '失敗'
@@ -261,8 +261,7 @@ def get_ship_berth_and_port_agent():
                 FROM ship_berth_order sbo
                 '''
                 cur.execute(query)
-                # for row in cur.fetchall():
-                #     print(row)
+                
                 return [row for row in cur.fetchall()]
 
 def combine_ship_and_berth(rows, ship_berth):
