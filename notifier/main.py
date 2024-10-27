@@ -213,6 +213,25 @@ ETD: {format_datetime(row['ETD'])}
 更新時間: 
 {format_datetime(row['更新時間']) if row['更新時間'] else "N/A"}"""
 
+def notification_filter(row, stakeholder) -> bool:
+    yang_ming_or_wan_hai = "陽明海運" in row["港代"] or "萬海航運公司" in row["港代"]
+    pier_1042_1043 = row['碼頭代號'] in {'1042', '1043'}
+    pier_1120_1121 = row['碼頭代號'] in {'1120', '1121'}
+    
+    stakeholder_conditions = {
+        'Pilot': yang_ming_or_wan_hai or pier_1042_1043 or pier_1120_1121,
+        'CIQS': yang_ming_or_wan_hai or pier_1042_1043 or pier_1120_1121,
+        'PierLienHai': pier_1042_1043,
+        'PierSelfOperated': pier_1120_1121,
+        'ShippingCompanyYangMing': "陽明海運" in row["港代"],
+        'ShippingAgentWanHai': "萬海航運公司" in row["港代"],
+        'Unmooring': yang_ming_or_wan_hai,
+        'LoadingUnloading': pier_1042_1043 or pier_1120_1121,
+        'Tugboat': yang_ming_or_wan_hai
+    }
+
+    return stakeholder_conditions.get(stakeholder, False)
+
 def send_notifications(row, line_notify_tokens, original_token):
     latest_event = row['最新消息']
     message = format_message(row)
@@ -220,18 +239,25 @@ def send_notifications(row, line_notify_tokens, original_token):
     if message is None:
         return
     if latest_event in notification_mapping:
-        for stakeholder in notification_mapping[latest_event]:
-            token = line_notify_tokens.get(stakeholder)
-            if not token:
-                print(f'{(datetime.now() + timedelta(hours=8)).strftime("%Y-%m-%d %H:%M:%S")} 無法發送通知: {row["船名"]} to {stakeholder}, TOKEN 未設置')
-                continue
+        send_to_test_group = False
+        send_stakeholders = []
 
-            response = send_line_notify(message, token)
-            status = '成功' if response.status_code == 200 else '失敗'
-            print(f'{(datetime.now() + timedelta(hours=8)).strftime("%Y-%m-%d %H:%M:%S")} 通知發送{status}: {row["船名"]} to {stakeholder}')
+        for stakeholder in notification_mapping[latest_event]:
+            if notification_filter(row, stakeholder):
+                send_to_test_group = True
+                send_stakeholders.append(stakeholder)
+
+                token = line_notify_tokens.get(stakeholder)
+                if not token:
+                    print(f'{(datetime.now() + timedelta(hours=8)).strftime("%Y-%m-%d %H:%M:%S")} 無法發送通知: {row["船名"]} to {stakeholder}, TOKEN 未設置')
+                    continue
+
+                response = send_line_notify(message, token)
+                status = '成功' if response.status_code == 200 else '失敗'
+                print(f'{(datetime.now() + timedelta(hours=8)).strftime("%Y-%m-%d %H:%M:%S")} 通知發送{status}: {row["船名"]} to {stakeholder}')
         
-        if original_token:
-            stakeholders_list = "\n".join(notification_mapping[latest_event])
+        if original_token and send_to_test_group:
+            stakeholders_list = "\n".join(send_stakeholders)
             message_with_stakeholders = f"\n通知對象: \n{stakeholders_list}" + message
             response = send_line_notify(message_with_stakeholders, original_token)
             status = '成功' if response.status_code == 200 else '失敗'
@@ -284,24 +310,12 @@ def main():
         rows = combine_ship_and_berth(rows, ship_berth_and_port_agent)
         for row in rows:
             try:
-                if "陽明海運" in row["港代"]:
-                    if row['訊息格式'] == '接靠順序':
-                        send_notifications_for_berth_order(row, original_token)
-                    else:
-                        send_notifications(row, line_notify_tokens, original_token)
-                if "萬海航運公司" in row["港代"]:
-                    if row['訊息格式'] == '接靠順序':
-                        send_notifications_for_berth_order(row, original_token)
-                    else:
-                        send_notifications(row, line_notify_tokens, original_token)
-            except:
-                print("NO PORT AGENT")
-            try: 
-                if row['碼頭代號'] == '1042' or row['碼頭代號'] == '1043' or row['碼頭代號'] == '1120' or row['碼頭代號'] == '1121' :
+                if row['訊息格式'] == '接靠順序':
+                    send_notifications_for_berth_order(row, original_token)
+                else:
                     send_notifications(row, line_notify_tokens, original_token)
-            except:
-                print("NO PORT")
-
+            except Exception as e:
+                print(f"Failed to send notification: {str(e)}")
 
         time.sleep(interval_time)
 
