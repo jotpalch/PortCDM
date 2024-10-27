@@ -242,7 +242,7 @@ def send_notifications_for_berth_order(row, original_token):
     message = format_previous_pilotage_message(row)
     if message is None:
         return
-    print(row)
+
     if original_token:
         response = send_line_notify(message, original_token)
         status = '成功' if response.status_code == 200 else '失敗'
