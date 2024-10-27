@@ -4,7 +4,7 @@ from datetime import datetime, timedelta
 import psycopg2
 import requests
 from psycopg2.extras import RealDictCursor
-from config import notification_mapping, INOUT_PILOTAGE_EVENTS, BERTH_ORDER_EVENTS
+from config import original_token, line_notify_tokens, notification_mapping, INOUT_PILOTAGE_EVENTS, BERTH_ORDER_EVENTS
 
 def send_line_notify(message, token):
     url = 'https://notify-api.line.me/api/notify'
@@ -272,20 +272,7 @@ def combine_ship_and_berth(rows, ship_berth):
     return(rows)
 
 def main():
-    original_token = os.getenv('LINE_NOTIFY_TOKEN')
     interval_time = int(os.getenv('INTERVAL_TIME', 180))
-
-    line_notify_tokens = {
-        'Pilot': os.getenv('LINE_NOTIFY_TOKEN_PILOT'),
-        'Unmooring': os.getenv('LINE_NOTIFY_TOKEN_UNMOORING'),
-        'Tugboat': os.getenv('LINE_NOTIFY_TOKEN_TUGBOAT'),
-        'ShippingAgent': os.getenv('LINE_NOTIFY_TOKEN_SHIPPINGAGENT'),
-        'ShippingCompany': os.getenv('LINE_NOTIFY_TOKEN_SHIPPINGCOMPANY'),
-        'LoadingUnloading': os.getenv('LINE_NOTIFY_TOKEN_LOADINGUNLOADING'),
-        'CIQS': os.getenv('LINE_NOTIFY_TOKEN_CIQS'),
-        'PierLIENHAI': os.getenv('LINE_NOTIFY_TOKEN_PIER_LIEN_HAI'),
-        'PierSelfOperated': os.getenv('LINE_NOTIFY_TOKEN_PIER_SELF_OPERATED')
-    }
 
     while True:
         print(f'{(datetime.now() + timedelta(hours=8)).strftime("%Y-%m-%d %H:%M:%S")} 查看資料庫有無更新')
