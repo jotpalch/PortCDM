@@ -159,7 +159,6 @@ def process_row_for_berth_order(row):
     else:
         trigger_event = '引水'
     trigger_event_time = row['berthing_time'] if row['berthing_time'] is not None else row['pilotage_time']
-
     return {
         '訊息格式': '接靠順序',
         '船名': row['ship_name'],
@@ -255,10 +254,19 @@ def get_ship_berth_and_port_agent():
 
                 query = '''
                 SELECT
-                    sbo.berth_number,
-                    sbo.port_agent,
-                    sbo.ship_name_chinese
-                FROM ship_berth_order sbo
+                    temp_table.berth_number,
+                    temp_table.port_agent,
+                    temp_table.ship_name_chinese
+                FROM (
+                    SELECT
+                        sbo.berth_number,
+                        sbo.port_agent,
+                        sbo.ship_name_chinese,
+                        sbo.updated_at,
+                        ROW_NUMBER() OVER(PARTITION BY sbo.ship_name_chinese ORDER BY sbo.updated_at DESC) AS rn
+                    FROM ship_berth_order sbo
+                ) AS temp_table
+                WHERE temp_table.rn = 1;
                 '''
                 cur.execute(query)
                 
@@ -286,15 +294,27 @@ def main():
         'PierLIENHAI': os.getenv('LINE_NOTIFY_TOKEN_PIER_LIEN_HAI'),
         'PierSelfOperated': os.getenv('LINE_NOTIFY_TOKEN_PIER_SELF_OPERATED')
     }
-
+    Get_berth_message_type=["引水人上船時間(進港)","引水人出發(進港)","船長報告ETA","實際靠妥時間","離開泊地時間","引水人上船時間(出港)"]
     while True:
         print(f'{(datetime.now() + timedelta(hours=8)).strftime("%Y-%m-%d %H:%M:%S")} 查看資料庫有無更新')
         interval = interval_time + 1
         rows = []
         rows.extend(get_recent_ship_statuses(interval))
         rows.extend(get_berth_and_previous_pilotage_time_updated(interval))
-        ship_berth_and_port_agent = get_ship_berth_and_port_agent()
-        rows = combine_ship_and_berth(rows, ship_berth_and_port_agent)
+        check = False
+        for row in rows:
+            for event in Get_berth_message_type:
+                try:
+                    if event in row['最新消息'] :
+                        ship_berth_and_port_agent = get_ship_berth_and_port_agent()
+                        rows = combine_ship_and_berth(rows, ship_berth_and_port_agent)
+                        check = True
+                        break
+                except:
+                    continue
+            if check:
+                break
+    
         for row in rows:
             try:
                 if "陽明海運" in row["港代"]:
