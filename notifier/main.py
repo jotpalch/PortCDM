@@ -277,7 +277,6 @@ def combine_ship_and_berth(rows, ship_berth):
         for i in range(len(ship_berth)):
             if ship_berth[i]['ship_name_chinese'] in row["船名"]:
                 row.update({'碼頭代號': ship_berth[i]['berth_number'], '港代': ship_berth[i]['port_agent']})
-                print(row)
     return(rows)
 
 def main():
