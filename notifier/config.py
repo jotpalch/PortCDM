@@ -14,7 +14,7 @@ line_notify_tokens = {
     'Tugboat': os.getenv('LINE_NOTIFY_TOKEN_TUGBOAT'),
     'ShippingAgentWanHai': os.getenv('LINE_NOTIFY_TOKEN_SHIPPINGAGENT_WAN_HAI'),
     'ShippingCompanyYangMing': os.getenv('LINE_NOTIFY_TOKEN_SHIPPINGCOMPANY_YANG_MING'),
-    'LoadingUnloading': os.getenv('LINE_NOTIFY_TOKEN_LOADINGUNLOADING_LIENHAI'),
+    'LoadingUnloading': os.getenv('LINE_NOTIFY_TOKEN_LOADINGUNLOADING_LIEN_HAI'),
     'PierLienHai': os.getenv('LINE_NOTIFY_TOKEN_PIER_LIEN_HAI'),
     'PierSelfOperated': os.getenv('LINE_NOTIFY_TOKEN_PIER_SELF_OPERATED')
 }
