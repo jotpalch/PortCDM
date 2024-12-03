@@ -4,7 +4,9 @@ from datetime import datetime, timedelta
 import psycopg2
 import requests
 from psycopg2.extras import RealDictCursor
-from config import original_token, line_notify_tokens, notification_mapping, INOUT_PILOTAGE_EVENTS, BERTH_ORDER_EVENTS
+
+from config import original_token, line_notify_tokens, notification_mapping, INOUT_PILOTAGE_EVENTS, BERTH_ORDER_EVENTS, berth_message_type_for_pier
+
 
 def send_line_notify(message, token):
     url = 'https://notify-api.line.me/api/notify'
@@ -39,7 +41,7 @@ def get_recent_ship_statuses(interval):
                 latest_event AS (
                     SELECT 
                         se.*,
-                        ROW_NUMBER() OVER (PARTITION BY se.ship_voyage_number ORDER BY se.event_time DESC) AS rn
+                        RANK() OVER (PARTITION BY se.ship_voyage_number ORDER BY se.event_time DESC) AS rk
                     FROM ship_events se
                 )
                 SELECT 
@@ -61,13 +63,13 @@ def get_recent_ship_statuses(interval):
                     AND eta.event_name = '修改進港預報' AND eta.rn = 1
                 LEFT JOIN ranked_events etd ON ss.ship_voyage_number = etd.ship_voyage_number 
                     AND etd.event_name = '修改出港預報' AND etd.rn = 1
-                LEFT JOIN latest_event le ON ss.ship_voyage_number = le.ship_voyage_number AND le.rn = 1
+                LEFT JOIN latest_event le ON ss.ship_voyage_number = le.ship_voyage_number AND le.rk = 1
                 LEFT JOIN ship_voyage sv ON ss.ship_voyage_number = sv.ship_voyage_number
-                WHERE ss.updated_at >= %s OR sv.updated_at >= %s
+                WHERE (ss.updated_at >= %s OR sv.updated_at >= %s) AND le.event_time >= %s
                 ORDER BY GREATEST(COALESCE(le.event_time, '1970-01-01'), COALESCE(sv.updated_at, '1970-01-01'))
             '''
             
-            cur.execute(query, (interval_ago, interval_ago))
+            cur.execute(query, (interval_ago, interval_ago, interval_ago))
             return [process_row(row) for row in cur.fetchall()]
         
 def get_berth_and_previous_pilotage_time_updated(interval):
@@ -127,6 +129,30 @@ def get_berth_and_previous_pilotage_time_updated(interval):
 
             cur.execute(query, (interval_ago,))
             return [process_row_for_berth_order(row) for row in cur.fetchall()]
+
+def get_ship_berth_and_port_agent():
+    with get_db_connection() as conn:
+        with conn.cursor(cursor_factory=RealDictCursor) as cur:
+
+                query = '''
+                SELECT
+                    temp_table.berth_number,
+                    temp_table.port_agent,
+                    temp_table.ship_name_chinese
+                FROM (
+                    SELECT
+                        sbo.berth_number,
+                        sbo.port_agent,
+                        sbo.ship_name_chinese,
+                        sbo.updated_at,
+                        ROW_NUMBER() OVER(PARTITION BY sbo.ship_name_chinese ORDER BY sbo.updated_at DESC) AS rn
+                    FROM ship_berth_order sbo
+                ) AS temp_table
+                WHERE temp_table.rn = 1;
+                '''
+                cur.execute(query)
+                
+                return [row for row in cur.fetchall()]
 
 def process_row(row):
     latest_event = row['latest_event_name']
@@ -213,10 +239,12 @@ ETD: {format_datetime(row['ETD'])}
 {format_datetime(row['更新時間']) if row['更新時間'] else "N/A"}"""
 
 def notification_filter(row, stakeholder) -> bool:
+
+    boat_name = "永明" in row["船名"] or "文明" in row["船名"] or "好明" in row["船名"] or "續明" in row["船名"] or "吉春" in row["船名"] or "長春輪" in row["船名"] or "星春輪" in row["船名"] or "石春" in row["船名"] or "遠明" in row["船名"] or "昇春" in row["船名"]
     yang_ming_or_wan_hai = "陽明海運" in row["港代"] or "萬海航運公司" in row["港代"]
     pier_1042_1043 = row['碼頭代號'] in {'1042', '1043'}
     pier_1120_1121 = row['碼頭代號'] in {'1120', '1121'}
-    
+
     stakeholder_conditions = {
         'Pilot': yang_ming_or_wan_hai or pier_1042_1043 or pier_1120_1121,
         'CIQS': yang_ming_or_wan_hai or pier_1042_1043 or pier_1120_1121,
@@ -224,7 +252,7 @@ def notification_filter(row, stakeholder) -> bool:
         'PierSelfOperated': pier_1120_1121,
         'ShippingCompanyYangMing': "陽明海運" in row["港代"],
         'ShippingAgentWanHai': "萬海航運公司" in row["港代"],
-        'Unmooring': yang_ming_or_wan_hai,
+        'Unmooring': boat_name,
         'LoadingUnloading': pier_1042_1043 or pier_1120_1121,
         'Tugboat': yang_ming_or_wan_hai
     }
@@ -242,6 +270,7 @@ def send_notifications(row, line_notify_tokens, original_token):
         send_stakeholders = []
 
         for stakeholder in notification_mapping[latest_event]:
+
             if notification_filter(row, stakeholder):
                 send_to_test_group = True
                 send_stakeholders.append(stakeholder)
@@ -274,72 +303,40 @@ def send_notifications_for_berth_order(row, original_token):
         status = '成功' if response.status_code == 200 else '失敗'
         print(f'{(datetime.now() + timedelta(hours=8)).strftime("%Y-%m-%d %H:%M:%S")} 通知發送{status}: {row["船名"]} - 事件: 碼頭{row["碼頭代號"]}-{row["觸發事件"]}')
 
-def get_ship_berth_and_port_agent():
-    with get_db_connection() as conn:
-        with conn.cursor(cursor_factory=RealDictCursor) as cur:
+def combine_ship_and_berth_and_port_agent(rows):
+    ship_berths = get_ship_berth_and_port_agent()
 
-                query = '''
-                SELECT
-                    temp_table.berth_number,
-                    temp_table.port_agent,
-                    temp_table.ship_name_chinese
-                FROM (
-                    SELECT
-                        sbo.berth_number,
-                        sbo.port_agent,
-                        sbo.ship_name_chinese,
-                        sbo.updated_at,
-                        ROW_NUMBER() OVER(PARTITION BY sbo.ship_name_chinese ORDER BY sbo.updated_at DESC) AS rn
-                    FROM ship_berth_order sbo
-                ) AS temp_table
-                WHERE temp_table.rn = 1;
-                '''
-                cur.execute(query)
-                
-                return [row for row in cur.fetchall()]
-
-def combine_ship_and_berth(rows, ship_berth):
     for row in rows:
-        for i in range(len(ship_berth)):
-            if ship_berth[i]['ship_name_chinese'] in row["船名"]:
-                row.update({'碼頭代號': ship_berth[i]['berth_number'], '港代': ship_berth[i]['port_agent']})
+        for ship_berth in ship_berths:
+            if ship_berth['ship_name_chinese'] in row["船名"]:
+                if row['最新消息'] in berth_message_type_for_pier:
+                    row.update({'碼頭代號': ship_berth['berth_number']})
+                
+                row.update({'港代': ship_berth['port_agent']})
+        if '碼頭代號' not in row.keys():
+            row.update({'碼頭代號': '0000'})
+        if '港代' not in row.keys():
+            row.update({'港代': 'NO PORT AGENT'})
+    
     return(rows)
 
 def main():
     interval_time = int(os.getenv('INTERVAL_TIME', 180))
 
-    Get_berth_message_type=["引水人上船時間(進港)","引水人出發(進港)","船長報告ETA","實際靠妥時間","離開泊地時間","引水人上船時間(出港)"]
-
-    while True:
-        print(f'{(datetime.now() + timedelta(hours=8)).strftime("%Y-%m-%d %H:%M:%S")} 查看資料庫有無更新')
-        interval = interval_time + 1
-        rows = []
-        rows.extend(get_recent_ship_statuses(interval))
-        rows.extend(get_berth_and_previous_pilotage_time_updated(interval))
-        check = False
-        for row in rows:
-            for event in Get_berth_message_type:
-                try:
-                    if event in row['最新消息'] :
-                        ship_berth_and_port_agent = get_ship_berth_and_port_agent()
-                        rows = combine_ship_and_berth(rows, ship_berth_and_port_agent)
-                        check = True
-                        break
-                except:
-                    continue
-            if check:
-                break
-    
-        for row in rows:
-            try:
-                if row['訊息格式'] == '接靠順序':
-                    send_notifications_for_berth_order(row, original_token)
-                else:
-                    send_notifications(row, line_notify_tokens, original_token)
-            except Exception as e:
-                print(f"Failed to send notification: {str(e)}")
-
-        time.sleep(interval_time)
+    print(f'{(datetime.now() + timedelta(hours=8)).strftime("%Y-%m-%d %H:%M:%S")} 查看資料庫有無更新')
+    interval = interval_time + 1
+    rows = []
+    rows.extend(get_recent_ship_statuses(interval))
+    rows = combine_ship_and_berth_and_port_agent(rows)
+    rows.extend(get_berth_and_previous_pilotage_time_updated(interval))
+    for row in rows:
+        try:
+            if row['訊息格式'] == '接靠順序':
+                send_notifications_for_berth_order(row, original_token)
+            else:
+                send_notifications(row, line_notify_tokens, original_token)
+        except Exception as e:
+            print(f"Failed to send notification: {str(e)}")
 
 if __name__ == "__main__":
     main()
