@@ -31,7 +31,8 @@ The system consists of three main services working together:
      - Port operators
      - Loading/unloading teams
 
-![image](https://github.com/user-attachments/assets/65cb4f05-44d6-44ab-84a3-54206b3ee8eb)
+![image](https://github.com/user-attachments/assets/28547d0d-7eb6-49a8-bdf3-a84833dbb27b)
+
 
 ## System Flow Chart
 
