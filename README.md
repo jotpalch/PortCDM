@@ -2,6 +2,8 @@
 
 PortCDM is a port management system that monitors and notifies stakeholders about ship movements and events in real-time.
 
+![image](https://github.com/user-attachments/assets/28547d0d-7eb6-49a8-bdf3-a84833dbb27b)
+
 ## System Architecture
 
 The system consists of three main services working together:
@@ -30,9 +32,6 @@ The system consists of three main services working together:
      - Shipping agents
      - Port operators
      - Loading/unloading teams
-
-![image](https://github.com/user-attachments/assets/28547d0d-7eb6-49a8-bdf3-a84833dbb27b)
-
 
 ## System Flow Chart
 
